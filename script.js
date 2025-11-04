@@ -32,7 +32,10 @@ function display(data) {
       container.innerHTML += `<p><b>Phonetic:</b> ${phonetic.text}</p>`;
     if (phonetic.audio)
       container.innerHTML += `<audio id="audioPlayer" src="${phonetic.audio}"></audio>
-<button class="sound-btn" onclick="document.getElementById('audioPlayer').play()">🔊</button>`;
+<button class="sound-btn" onclick="document.getElementById('audioPlayer').play()">
+  🔊
+</button>
+`;
   }
 
   // Definitions of the words
@@ -41,7 +44,7 @@ function display(data) {
 
     // loop through definitions
     meaning.definitions.forEach((def) => {
-      container.innerHTML += `<p>• ${def.definition} </p>`;
+      container.innerHTML += `<p>• ${def.definition}</p>`;
       if (def.example) {
         container.innerHTML += `<em>Example: ${def.example}</em><br>`;
       }
@@ -58,11 +61,6 @@ function display(data) {
       )}</p>`;
     }
   });
-
-  // Word searched
-  container.innerHTML += `<h2>${wordInfo.word} 
-  <button onclick="addToFavorites('${wordInfo.word}')">⭐</button>
-</h2>`;
 }
 
 // Search button action
@@ -78,26 +76,7 @@ async function searchWord() {
 // WORD OF THE DAY section
 
 async function fetchWordOfTheDay() {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyAqvC4G0_XMJtFvPSLCy_tGmbOs0ONNIH8`;
-
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text: "Provide a random English word of the day with its definition and an example sentence.",
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
+  const resp = await fetch("/api/word-of-the-day");
   const data = await resp.json();
   return data.candidates[0].content.parts[0].text;
 }
@@ -107,8 +86,11 @@ async function fetchWordOfTheDay() {
 window.onload = async () => {
   // Render history on load
   renderHistory();
+  
+  // Render favorites on load
+  renderFavorites();
 
-  // LOAD WORD OF THE DAY
+  //LOAD WORD OF THE DAY
   const wotdEl = document.getElementById("wotd");
   wotdEl.innerHTML = "<p>⏳ Loading Word of the Day...</p>";
 
@@ -135,6 +117,12 @@ window.onload = async () => {
       "<p style='color:red;'>⚠️ Could not fetch Word of the Day.</p>";
     console.error(err);
   }
+
+  // Setup clear history button
+  setupClearHistory();
+  
+  // Setup clear favorites button
+  setupClearFavorites();
 };
 
 // Adding search history
@@ -157,9 +145,14 @@ function addToHistory(word) {
 }
 
 function renderHistory() {
-  const history = JSON.parse(localStorage.getItem("searchHistory")) || []; //Take JSON text and convert it into a real JavaScript object I can use
-  const list = document.getElementById("historyList");
+  const history = JSON.parse(localStorage.getItem("searchHistory")) || [];
+  const list = document.getElementById("historylist");
   list.innerHTML = "";
+
+  if (history.length === 0) {
+    list.innerHTML = "<li class='history-empty'>No search history yet</li>";
+    return;
+  }
 
   history.forEach((word) => {
     const li = document.createElement("li");
@@ -176,50 +169,33 @@ function renderHistory() {
   });
 }
 
-// Clear history function
-function clearHistory() {
-  localStorage.removeItem("searchHistory"); // remove from storage
-  renderHistory(); // re-render empty history
-}
-
-// Attach event listener
-document.addEventListener("DOMContentLoaded", () => {
-  const clearBtn = document.getElementById("clearHistoryBtn");
-  if (clearBtn) {
-    clearBtn.addEventListener("click", clearHistory);
-  }
-});
-
-// Add to Favorites
-function addToFavorites(word) {
-  let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-
-  if (!favorites.includes(word)) {
-    favorites.push(word);
-
-    // keep only last 10 favorites
-    if (favorites.length > 10) {
-      favorites.shift();
+function setupClearHistory() {
+  const clearBtn = document.getElementById("clearHistory");
+  clearBtn.onclick = () => {
+    if (confirm("Are you sure you want to clear your search history?")) {
+      localStorage.removeItem("searchHistory");
+      renderHistory();
     }
-
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }
-
-  renderFavorites();
+  };
 }
 
-// Render Favorites
+// Favorites functions
 function renderFavorites() {
   const favorites = JSON.parse(localStorage.getItem("favorites")) || [];
   const list = document.getElementById("favoritesList");
   list.innerHTML = "";
+
+  if (favorites.length === 0) {
+    list.innerHTML = "<li class='favorite-empty'>No favorites yet</li>";
+    return;
+  }
 
   favorites.forEach((word) => {
     const li = document.createElement("li");
     li.textContent = word;
     li.className = "favorite-item";
 
-    // click to search again
+    // allow clicking to search
     li.onclick = () => {
       document.getElementById("searchInput").value = word;
       searchWord();
@@ -229,16 +205,12 @@ function renderFavorites() {
   });
 }
 
-// Clear favorites
-function clearFavorites() {
-  localStorage.removeItem("favorites");
-  renderFavorites();
+function setupClearFavorites() {
+  const clearBtn = document.getElementById("clearFavoritesBtn");
+  clearBtn.onclick = () => {
+    if (confirm("Are you sure you want to clear your favorites?")) {
+      localStorage.removeItem("favorites");
+      renderFavorites();
+    }
+  };
 }
-
-// Attach favorite clear button
-document.addEventListener("DOMContentLoaded", () => {
-  const clearFavBtn = document.getElementById("clearFavoritesBtn");
-  if (clearFavBtn) {
-    clearFavBtn.addEventListener("click", clearFavorites);
-  }
-});
