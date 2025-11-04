@@ -3,25 +3,30 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); // 👈 UPDATED
+        if (!process.env.GEMINI_API_KEY) {
+            throw new Error("Missing GEMINI_API_KEY environment variable");
+        }
 
-        const prompt = `Give me a "Word of the Day" with:
-    1. The word (one word only)
-    2. A short definition
-    3. An example sentence
-    Format like:
-    Word: ...
-    Definition: ...
-    Example: ...`;
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        // ✅ Use universally supported model
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+        const prompt = `
+Give me a "Word of the Day" with:
+1. The word (single word only)
+2. A concise definition
+3. One example sentence
+Format:
+Word: ...
+Definition: ...
+Example: ...
+`;
 
         const result = await model.generateContent(prompt);
 
-        res.status(200).json({
-            candidates: result.response.candidates,
-        });
+        res.status(200).json(result.response);
     } catch (error) {
         console.error("Gemini API Error:", error);
-        res.status(500).json({ error: error.message || "Failed to fetch Word of the Day." });
+        res.status(500).json({ error: String(error) });
     }
 }
